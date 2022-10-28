@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -391,17 +390,6 @@ func (d *Dialer) DialContext(ctx context.Context, urlStr string, requestHeader h
 
 	resp, err := http.ReadResponse(conn.br, req)
 	if err != nil {
-		if d.TLSClientConfig != nil {
-			for _, proto := range d.TLSClientConfig.NextProtos {
-				if proto != "http/1.1" {
-					return nil, nil, fmt.Errorf(
-						"websocket: protocol %q was given but is not supported;"+
-							"sharing tls.Config with net/http Transport can cause this error: %w",
-						proto, err,
-					)
-				}
-			}
-		}
 		return nil, nil, err
 	}
 
