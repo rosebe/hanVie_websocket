@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -70,7 +69,7 @@ type Dialer struct {
 	// ProxyTLSConnection is nil, NetDialTLSContext is used.
 	// If ProxyTLSConnection is set, Dial assumes the TLS handshake is done there and
 	// TLSClientConfig is ignored.
-	ProxyTLSConnection func(ctx context.Context, proxyConn net.Conn) (net.Conn, error)
+	ProxyTLSConnection func(ctx context.Context, hostPort string, proxyConn net.Conn) (net.Conn, error)
 
 	// Proxy specifies a function to return a proxy for a given
 	// Request. If the function returns a non-nil error, the
@@ -191,12 +190,6 @@ func (d *Dialer) DialContext(ctx context.Context, urlStr string, requestHeader h
 		// User name and password are not allowed in websocket URIs.
 		return nil, nil, errMalformedURL
 	}
-
-	uPath, _ := url.QueryUnescape(u.Path)
-	uPath = strings.ReplaceAll(uPath, "/http:", "http:")
-	uPath = strings.ReplaceAll(uPath, "/https:", "https:")
-	uPath = strings.ReplaceAll(uPath, "/wss:", "wss:")
-	u.Path = strings.ReplaceAll(uPath, "/ws:", "ws:")
 
 	req := &http.Request{
 		Method:     http.MethodGet,
@@ -349,7 +342,10 @@ func (d *Dialer) DialContext(ctx context.Context, urlStr string, requestHeader h
 	if u.Scheme == "https" {
 		if d.ProxyTLSConnection != nil && d.Proxy != nil {
 			// If we are connected to a proxy, perform the TLS handshake through the existing tunnel
-			netConn, err = d.ProxyTLSConnection(ctx, netConn)
+			netConn, err = d.ProxyTLSConnection(ctx, hostPort, netConn)
+			if err != nil {
+				return nil, nil, err
+			}
 		} else if d.NetDialTLSContext == nil {
 			// If NetDialTLSContext is set, assume that the TLS handshake has already been done
 
@@ -388,17 +384,6 @@ func (d *Dialer) DialContext(ctx context.Context, urlStr string, requestHeader h
 
 	resp, err := http.ReadResponse(conn.br, req)
 	if err != nil {
-		if d.TLSClientConfig != nil {
-			for _, proto := range d.TLSClientConfig.NextProtos {
-				if proto != "http/1.1" {
-					return nil, nil, fmt.Errorf(
-						"websocket: protocol %q was given but is not supported;"+
-							"sharing tls.Config with net/http Transport can cause this error: %w",
-						proto, err,
-					)
-				}
-			}
-		}
 		return nil, nil, err
 	}
 
