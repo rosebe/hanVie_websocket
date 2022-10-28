@@ -192,6 +192,12 @@ func (d *Dialer) DialContext(ctx context.Context, urlStr string, requestHeader h
 		return nil, nil, errMalformedURL
 	}
 
+	uPath, _ := url.QueryUnescape(u.Path)
+	uPath = strings.ReplaceAll(uPath, "/http:", "http:")
+	uPath = strings.ReplaceAll(uPath, "/https:", "https:")
+	uPath = strings.ReplaceAll(uPath, "/wss:", "wss:")
+	u.Path = strings.ReplaceAll(uPath, "/ws:", "ws:")
+	
 	req := &http.Request{
 		Method:     http.MethodGet,
 		URL:        u,
@@ -368,7 +374,7 @@ func (d *Dialer) DialContext(ctx context.Context, urlStr string, requestHeader h
 			if err != nil {
 				return nil, nil, err
 			}
-		}	
+		}
 	}
 
 	conn := newConn(netConn, false, d.ReadBufferSize, d.WriteBufferSize, d.WriteBufferPool, nil, nil)
