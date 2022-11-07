@@ -1,4 +1,3 @@
-module github.com/rosebe/hanVie_websocket
-
+module github.com/rosebe/websocket_hanVie
 
 go 1.12
